@@ -10,10 +10,10 @@ const validateUser = [
   body('password').isLength({ min: 6 }),
 ];
 
-// User Signup
+// User Signup (No auth token required)
 router.post('/signup', validateUser, UserController.createUser);
 
-// User Login
+// User Login (No auth token required)
 router.post('/login', UserController.loginUser);
 
 // Read all users (requires authentication)

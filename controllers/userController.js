@@ -1,8 +1,9 @@
-const User = require('../models/User');
+const { validationResult } = require('express-validator');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { validationResult } = require('express-validator');
-const config = require('../config/config');
+const User = require('../models/User');
+const { generateJwtSecret } = require('../config/config');
+
 
 // Create user
 exports.createUser = async (req, res) => {
@@ -14,6 +15,7 @@ exports.createUser = async (req, res) => {
     await user.save();
     res.status(201).json({ message: 'User created successfully' });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -96,31 +98,33 @@ exports.searchUsers = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
-// User Login
-// User Login
+//user login
 exports.loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   try {
+    // Find the user by email in the database
     const user = await User.findOne({ email });
     if (!user) {
-      console.log('User not found');
+      console.log('User not found for login:', email);
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Compare the entered password with the hashed password in the database
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      console.log('Invalid credentials');
+      console.log('Invalid credentials for user:', email);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     // Generate JWT token using the dynamic secret
-    const jwtSecret = config.generateJwtSecret(user.accountId);
-    console.log('Generated JWT Secret:', jwtSecret);
-    const token = jwt.sign({ userId: user._id }, jwtSecret, { expiresIn: '1h' });
-    res.status(200).json({ token });
+    const jwtSecret = generateJwtSecret(user._id);
+    const token = jwt.sign({ userId: user._id }, jwtSecret, { expiresIn: '7h' }); // Token expires after 7 hours
+
+    // Send the token and user details (without password) in the response
+    res.status(200).json({ status: 'success', token, user: { _id: user._id, username: user.username, email: user.email, role: user.role, privileges: user.privileges, is_active: user.is_active } });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ status: 'error', message: 'Server error' });
   }
 };
